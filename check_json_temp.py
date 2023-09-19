@@ -4,12 +4,14 @@
 # Michael Holschbach
 # mholschbach@gmail.com
 
-import argparse, urllib2, json, re
+import argparse, json, re
 
 from pprint import pprint
+from urllib.request import urlopen
 
 parser = argparse.ArgumentParser(description='Check temperature, humidity or dew point')
 parser.add_argument('-H', action="store", dest="hostname", help='Server name')
+parser.add_argument('-sensor', action="store", dest="sensor", type=int, help='Sensor id')
 parser.add_argument('-w', action="store", dest="warn", type=int, help='Warning temperature')
 parser.add_argument('-c', action="store", dest="crit", type=int, help='Critical temperature')
 parser.add_argument('-temperature', action="store_true", dest="temperature", help='Check temperature')
@@ -22,32 +24,38 @@ if (results.temperature):
     crit = results.crit
 
     if (warn == None or crit == None):
-        print "Warning or critical threshold unset"
+        print("Warning or critical threshold unset")
         parser.print_help()
         raise SystemExit()
 
     if (crit <= warn):
-        print "Critical must be higher than warning temperature"
+        print("Critical must be higher than warning temperature")
         parser.print_help()
         raise SystemExit()
 
 if (results.temperature or results.humidity or results.dewpoint):
 
     hostname = results.hostname
+    sensor = results.sensor
     try:
-        json_page = urllib2.urlopen('http://' + hostname+ '/json')
+        if (sensor == None):
+            with urlopen('http://' + hostname + '/json', None, 10) as response:
+                json_page=response.read()
+        else:
+            with urlopen('http://' + hostname + '/json/' + str(sensor), None, 10) as response:
+                json_page=response.read()
     except:
-        print "Could not connect to " + hostname
+        print("Could not connect to " + hostname)
         raise SystemExit(3)
 
 else:
-    print "Select temperatur, humidity or dew point"
+    print("Select temperatur, humidity or dew point")
     parser.print_help()
     raise SystemExit()
 
-data = json.load(json_page)
+data = json.loads(json_page)
 #pprint(data)
-json_page.close()
+#json_page.close()
 
 if (results.temperature):
     #print data["Sensor"]["Temperatur"]
@@ -70,13 +78,13 @@ if (results.temperature):
         commonoutput += " DewPoint=" + str(dewpoint)
 
     if (temperature > crit):
-        print "CRITICAL" + commonoutput
+        print("CRITICAL" + commonoutput)
         raise SystemExit(2)
     elif (temperature > warn):
-        print "WARNING" + commonoutput
+        print("WARNING" + commonoutput)
         raise SystemExit(1)
     else:
-        print "OK" + commonoutput
+        print("OK" + commonoutput)
         raise SystemExit(0)
 
 if (results.dewpoint):
@@ -92,11 +100,12 @@ if (results.dewpoint):
         #print "WARNING" + commonoutput
         #raise SystemExit(1)
     #else:
-    print "OK" + commonoutput
+    print("OK" + commonoutput)
     raise SystemExit(0)
 
 if (results.humidity):
     commonoutput = ": Humidity: " + str(humidity) + " C|Humidity=" + str(humidity)
     
-    print "OK" + commonoutput
+    print("OK" + commonoutput)
     raise SystemExit(0)
+
